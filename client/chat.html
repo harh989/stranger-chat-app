@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+<header>
+  <span id="status">Waiting to connect…</span>
+</header>
+
+<div id="chatBox"></div>
+<div id="typing" class="typing"></div>
+
+<div class="input-bar">
+  <input id="msg" placeholder="Type message…" />
+  <button onclick="send()">Send</button>
+</div>
+
+<div class="ad-box">Ad Space</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="chat.js"></script>
+</body>
+</html>
