@@ -1,24 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Stranger Chat</title>
   <link rel="stylesheet" href="style.css">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Google AdSense (ADD AFTER APPROVAL) -->
+  <!--
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+  -->
 </head>
-<body class="landing">
+<body>
 
-<div class="hero">
-  <h1>Talk to Strangers</h1>
-  <p>Anonymous • Simple • Friendly</p>
+  <h2>Stranger Chat</h2>
+  <p id="status">Connecting...</p>
 
-  <img src="https://images.unsplash.com/photo-1529333166437-7750a6dd5a70" />
+  <div id="chat"></div>
 
-  <a href="chat.html">
-    <button class="start-btn">Start Chat</button>
-  </a>
+  <p id="typing"></p>
 
-  <div class="ad-box">Ad Space</div>
-</div>
+  <input id="message" placeholder="Type message..." disabled />
+  <button id="send" disabled>Send</button>
 
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
