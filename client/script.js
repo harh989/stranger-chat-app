@@ -1,15 +1,11 @@
-// ===== Stranger Chat Frontend (MATCH FIXED) =====
+// ===== Stranger Chat (FINAL WORKING CLIENT) =====
 
 const BACKEND_URL = "https://stranger-chat-backend.onrender.com";
 
-// create socket
-window.socket = io(BACKEND_URL, {
-  path: "/socket.io",
-  transports: ["websocket"],
-  reconnection: true
+const socket = io(BACKEND_URL, {
+  transports: ["websocket"]
 });
 
-// elements
 const chat = document.getElementById("chat");
 const input = document.getElementById("message");
 const sendBtn = document.getElementById("send");
@@ -18,20 +14,16 @@ const status = document.getElementById("status");
 input.disabled = true;
 sendBtn.disabled = true;
 
-// when socket connects to server
+// Ask for partner AFTER connection
 socket.on("connect", () => {
-  status.innerText = "Connected to server. Finding a stranger...";
-  socket.emit("findPartner");   // 🔥 IMPORTANT
+  status.innerText = "Connected to server. Finding stranger...";
+  socket.emit("findPartner");
 });
 
-// waiting
 socket.on("waiting", () => {
   status.innerText = "Waiting for a stranger...";
-  input.disabled = true;
-  sendBtn.disabled = true;
 });
 
-// matched
 socket.on("matched", () => {
   status.innerText = "Connected to a stranger!";
   chat.innerHTML = "";
@@ -39,20 +31,17 @@ socket.on("matched", () => {
   sendBtn.disabled = false;
 });
 
-// receive message
 socket.on("message", (msg) => {
   chat.innerHTML += `<p><b>Stranger:</b> ${msg}</p>`;
   chat.scrollTop = chat.scrollHeight;
 });
 
-// stranger disconnected
 socket.on("partnerDisconnected", () => {
-  status.innerText = "Stranger disconnected. Refresh to find new one.";
+  status.innerText = "Stranger disconnected. Refresh to reconnect.";
   input.disabled = true;
   sendBtn.disabled = true;
 });
 
-// send message
 function sendMessage() {
   const msg = input.value.trim();
   if (!msg) return;

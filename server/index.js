@@ -7,58 +7,63 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  path: "/socket.io",
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  },
-  transports: ["websocket"]
+  }
 });
 
-let waitingUser = null;
+// 🔥 QUEUE-BASED MATCHMAKING (SAFE)
+const waitingQueue = [];
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+  console.log("Connected:", socket.id);
 
   socket.on("findPartner", () => {
-    console.log("Find partner request from", socket.id);
+    console.log("Find partner:", socket.id);
 
-    if (waitingUser && waitingUser.connected) {
-      // match users
-      socket.partner = waitingUser;
-      waitingUser.partner = socket;
+    // Remove socket if already in queue
+    const index = waitingQueue.indexOf(socket);
+    if (index !== -1) waitingQueue.splice(index, 1);
+
+    if (waitingQueue.length > 0) {
+      const partner = waitingQueue.shift();
+
+      socket.partner = partner;
+      partner.partner = socket;
 
       socket.emit("matched");
-      waitingUser.emit("matched");
+      partner.emit("matched");
 
-      waitingUser = null;
+      console.log("Matched:", socket.id, partner.id);
     } else {
-      waitingUser = socket;
+      waitingQueue.push(socket);
       socket.emit("waiting");
+      console.log("Waiting:", socket.id);
     }
   });
 
   socket.on("message", (msg) => {
-    if (socket.partner && socket.partner.connected) {
+    if (socket.partner) {
       socket.partner.emit("message", msg);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    console.log("Disconnected:", socket.id);
 
-    if (socket.partner && socket.partner.connected) {
+    // Remove from queue if waiting
+    const index = waitingQueue.indexOf(socket);
+    if (index !== -1) waitingQueue.splice(index, 1);
+
+    if (socket.partner) {
       socket.partner.emit("partnerDisconnected");
       socket.partner.partner = null;
-    }
-
-    if (waitingUser === socket) {
-      waitingUser = null;
     }
   });
 });
 
-// health check
+// Health check
 app.get("/", (req, res) => {
   res.send("Stranger Chat Server Running");
 });
