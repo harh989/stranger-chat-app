@@ -9,79 +9,79 @@ app.use(cors());
 
 const server = http.createServer(app);
 
+// IMPORTANT: socket.io config for Netlify + Render
 const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  transports: ["websocket"]
 });
 
 let waitingUser = null;
-const activeChats = new Map();
 
 io.on("connection", (socket) => {
-  socket.isTyping = false;
+  console.log("User connected:", socket.id);
 
-  // MATCHMAKING
-  if (waitingUser && waitingUser.id !== socket.id) {
-    activeChats.set(socket.id, waitingUser.id);
-    activeChats.set(waitingUser.id, socket.id);
+  // If someone is already waiting → match them
+  if (waitingUser && waitingUser.connected) {
+    const partner = waitingUser;
+
+    socket.partner = partner;
+    partner.partner = socket;
 
     socket.emit("matched");
-    waitingUser.emit("matched");
+    partner.emit("matched");
 
     waitingUser = null;
   } else {
+    // Otherwise put this user in waiting
     waitingUser = socket;
     socket.emit("waiting");
   }
 
-  // MESSAGE
+  // Receive message and send to partner
   socket.on("message", (msg) => {
-    const partnerId = activeChats.get(socket.id);
-    if (partnerId) {
-      io.to(partnerId).emit("message", msg);
+    if (socket.partner && socket.partner.connected) {
+      socket.partner.emit("message", msg);
     }
   });
 
-  // TYPING STATUS
+  // Typing indicator
   socket.on("typing", () => {
-    const partnerId = activeChats.get(socket.id);
-    if (partnerId && !socket.isTyping) {
-      socket.isTyping = true;
-      io.to(partnerId).emit("typing", true);
+    if (socket.partner && socket.partner.connected) {
+      socket.partner.emit("typing", true);
     }
   });
 
   socket.on("stopTyping", () => {
-    const partnerId = activeChats.get(socket.id);
-    socket.isTyping = false;
-    if (partnerId) {
-      io.to(partnerId).emit("typing", false);
+    if (socket.partner && socket.partner.connected) {
+      socket.partner.emit("typing", false);
     }
   });
 
-  // DISCONNECT
+  // Handle disconnect
   socket.on("disconnect", () => {
-    const partnerId = activeChats.get(socket.id);
+    console.log("User disconnected:", socket.id);
 
-    if (partnerId) {
-      io.to(partnerId).emit("partnerDisconnected");
-      activeChats.delete(partnerId);
+    if (socket.partner && socket.partner.connected) {
+      socket.partner.emit("partnerDisconnected");
+      socket.partner.partner = null;
     }
 
-    activeChats.delete(socket.id);
-
-    if (waitingUser?.id === socket.id) {
+    if (waitingUser === socket) {
       waitingUser = null;
     }
   });
 });
 
+// Health check route
 app.get("/", (req, res) => {
   res.send("Stranger Chat Server Running");
 });
 
-server.listen(process.env.PORT || 5000, () => {
-  console.log("Server running");
+// Start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log("Server running on port", PORT);
 });
