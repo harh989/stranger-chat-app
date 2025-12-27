@@ -1,43 +1,40 @@
-// ===============================
-// Stranger Chat - Frontend Logic
-// Production Ready (Render + Netlify)
-// ===============================
+// ===== Stranger Chat Frontend (FINAL FIX) =====
 
-// 🔴 IMPORTANT: backend URL
+// IMPORTANT: backend base URL
 const BACKEND_URL = "https://stranger-chat-backend.onrender.com";
 
-// Create socket connection (force websocket)
-const socket = io(BACKEND_URL, {
+// Force socket.io path + websocket
+window.socket = io(BACKEND_URL, {
+  path: "/socket.io",
   transports: ["websocket"],
   reconnection: true,
+  reconnectionAttempts: 5,
+  timeout: 20000
 });
 
-// DOM elements
+// Elements
 const chat = document.getElementById("chat");
 const input = document.getElementById("message");
 const sendBtn = document.getElementById("send");
 const status = document.getElementById("status");
 const typingText = document.getElementById("typing");
 
-let escCount = 0;
-let typingTimeout;
-
-// Initial state
+// Disable input initially
 input.disabled = true;
 sendBtn.disabled = true;
 
-// -------------------------------
-// Socket events
-// -------------------------------
+// ---- SOCKET EVENTS ----
 
-// Waiting for partner
+socket.on("connect", () => {
+  status.innerText = "Connected to server, waiting for stranger...";
+});
+
 socket.on("waiting", () => {
   status.innerText = "Waiting for a stranger...";
   input.disabled = true;
   sendBtn.disabled = true;
 });
 
-// Matched with partner
 socket.on("matched", () => {
   status.innerText = "Connected!";
   chat.innerHTML = "";
@@ -45,75 +42,29 @@ socket.on("matched", () => {
   sendBtn.disabled = false;
 });
 
-// Receive message
 socket.on("message", (msg) => {
   chat.innerHTML += `<p><b>Stranger:</b> ${msg}</p>`;
   chat.scrollTop = chat.scrollHeight;
 });
 
-// Typing indicator
-socket.on("typing", (isTyping) => {
-  typingText.innerText = isTyping ? "Stranger is typing..." : "";
-});
-
-// Partner disconnected
 socket.on("partnerDisconnected", () => {
-  status.innerText = "Stranger disconnected. Refresh to connect again.";
+  status.innerText = "Stranger disconnected. Refresh to reconnect.";
   input.disabled = true;
   sendBtn.disabled = true;
-  typingText.innerText = "";
 });
 
-// -------------------------------
-// Send message
-// -------------------------------
+// ---- SEND MESSAGE ----
 
 function sendMessage() {
   const msg = input.value.trim();
   if (!msg) return;
 
   chat.innerHTML += `<p><b>You:</b> ${msg}</p>`;
-  chat.scrollTop = chat.scrollHeight;
-
   socket.emit("message", msg);
   input.value = "";
-  socket.emit("stopTyping");
 }
 
 sendBtn.addEventListener("click", sendMessage);
-
 input.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
-});
-
-// -------------------------------
-// Typing detection
-// -------------------------------
-
-input.addEventListener("input", () => {
-  socket.emit("typing");
-  clearTimeout(typingTimeout);
-
-  typingTimeout = setTimeout(() => {
-    socket.emit("stopTyping");
-  }, 800);
-});
-
-// -------------------------------
-// ESC double-press to disconnect
-// -------------------------------
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    escCount++;
-
-    if (escCount === 1) {
-      alert("Press ESC again to disconnect");
-      setTimeout(() => {
-        escCount = 0;
-      }, 1500);
-    } else if (escCount === 2) {
-      location.reload();
-    }
-  }
 });
