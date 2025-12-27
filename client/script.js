@@ -1,60 +1,58 @@
-// ===== Stranger Chat Frontend (FINAL FIX) =====
+// ===== Stranger Chat Frontend (MATCH FIXED) =====
 
-// IMPORTANT: backend base URL
 const BACKEND_URL = "https://stranger-chat-backend.onrender.com";
 
-// Force socket.io path + websocket
+// create socket
 window.socket = io(BACKEND_URL, {
   path: "/socket.io",
   transports: ["websocket"],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  timeout: 20000
+  reconnection: true
 });
 
-// Elements
+// elements
 const chat = document.getElementById("chat");
 const input = document.getElementById("message");
 const sendBtn = document.getElementById("send");
 const status = document.getElementById("status");
-const typingText = document.getElementById("typing");
 
-// Disable input initially
 input.disabled = true;
 sendBtn.disabled = true;
 
-// ---- SOCKET EVENTS ----
-
+// when socket connects to server
 socket.on("connect", () => {
-  status.innerText = "Connected to server, waiting for stranger...";
+  status.innerText = "Connected to server. Finding a stranger...";
+  socket.emit("findPartner");   // 🔥 IMPORTANT
 });
 
+// waiting
 socket.on("waiting", () => {
   status.innerText = "Waiting for a stranger...";
   input.disabled = true;
   sendBtn.disabled = true;
 });
 
+// matched
 socket.on("matched", () => {
-  status.innerText = "Connected!";
+  status.innerText = "Connected to a stranger!";
   chat.innerHTML = "";
   input.disabled = false;
   sendBtn.disabled = false;
 });
 
+// receive message
 socket.on("message", (msg) => {
   chat.innerHTML += `<p><b>Stranger:</b> ${msg}</p>`;
   chat.scrollTop = chat.scrollHeight;
 });
 
+// stranger disconnected
 socket.on("partnerDisconnected", () => {
-  status.innerText = "Stranger disconnected. Refresh to reconnect.";
+  status.innerText = "Stranger disconnected. Refresh to find new one.";
   input.disabled = true;
   sendBtn.disabled = true;
 });
 
-// ---- SEND MESSAGE ----
-
+// send message
 function sendMessage() {
   const msg = input.value.trim();
   if (!msg) return;
@@ -64,7 +62,7 @@ function sendMessage() {
   input.value = "";
 }
 
-sendBtn.addEventListener("click", sendMessage);
+sendBtn.onclick = sendMessage;
 input.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
 });

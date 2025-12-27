@@ -6,7 +6,6 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 
-// IMPORTANT: explicit socket.io path
 const io = new Server(server, {
   path: "/socket.io",
   cors: {
@@ -21,21 +20,26 @@ let waitingUser = null;
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  if (waitingUser) {
-    socket.partner = waitingUser;
-    waitingUser.partner = socket;
+  socket.on("findPartner", () => {
+    console.log("Find partner request from", socket.id);
 
-    socket.emit("matched");
-    waitingUser.emit("matched");
+    if (waitingUser && waitingUser.connected) {
+      // match users
+      socket.partner = waitingUser;
+      waitingUser.partner = socket;
 
-    waitingUser = null;
-  } else {
-    waitingUser = socket;
-    socket.emit("waiting");
-  }
+      socket.emit("matched");
+      waitingUser.emit("matched");
+
+      waitingUser = null;
+    } else {
+      waitingUser = socket;
+      socket.emit("waiting");
+    }
+  });
 
   socket.on("message", (msg) => {
-    if (socket.partner) {
+    if (socket.partner && socket.partner.connected) {
       socket.partner.emit("message", msg);
     }
   });
@@ -43,7 +47,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
 
-    if (socket.partner) {
+    if (socket.partner && socket.partner.connected) {
       socket.partner.emit("partnerDisconnected");
       socket.partner.partner = null;
     }
@@ -54,7 +58,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// Health check
+// health check
 app.get("/", (req, res) => {
   res.send("Stranger Chat Server Running");
 });
